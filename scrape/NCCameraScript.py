@@ -6,7 +6,7 @@ import sched, time
 import datetime
 
 # Change the WD
-os.chdir("/home/pi/Documents/NC_TCs")
+# os.chdir("/home/pi/Documents/NC_TCs")
 
 #Mirlo, Ocracoke, and Hatteras URLs
 #from   https://www.drivenc.gov/
@@ -29,21 +29,21 @@ Min = 10
 
 #The function for the cameras
 def GetTrafficCam(URL,camera):
-    
+
     # retrieve the image
     urllib.request.urlretrieve(URL, "dummy.jpg")
 
     #determine image name
     ImName = camera + '/' + str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")) + '-' + camera + '.jpg'
-    
+
     #save image
     os.rename('dummy.jpg', ImName)
-    
+
 def LookAtTraffic():
-    
+
     #print for debug
     print ("looking at traffic...%s" % datetime.datetime.now())
-    
+
     #cameras:
     GetTrafficCam(Mirlo,'Mirlo')
     GetTrafficCam(Ocracoke,'Ocracoke')
@@ -54,7 +54,7 @@ def LookAtTraffic():
     GetTrafficCam(NorthDock,'NorthDock')
     GetTrafficCam(SouthDock, 'SouthDock')
     GetTrafficCam(SouthOcracoke, 'SouthOcracoke')
-  
+
 #schedule
 scheduler = sched.scheduler(time.time, time.sleep)
 scheduler.enter(0, 1, LookAtTraffic, ())
@@ -63,9 +63,3 @@ scheduler.enter(0, 1, LookAtTraffic, ())
 while True:
     scheduler.run()
     scheduler.enter(Min*60, 1, LookAtTraffic, ())
-
-
-
-
-
-
