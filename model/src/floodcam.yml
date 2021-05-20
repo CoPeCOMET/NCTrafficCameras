@@ -1,0 +1,15 @@
+# conda env create --file floodcam.yml
+name: floodcam
+channels:
+  - defaults
+dependencies:
+ - python
+ - numpy
+ - scikit-learn
+ - scikit-image
+ - tensorflow-gpu
+ - ipython
+ - tqdm
+ - pandas
+ - seaborn
+ - matplotlib

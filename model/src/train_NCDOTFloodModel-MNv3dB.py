@@ -43,7 +43,7 @@
 import os
 from os import getcwd
 import matplotlib.pyplot as plt
-import pandas as pd
+# import pandas as pd
 import numpy as np
 from glob import glob
 import matplotlib.cm as cm
@@ -54,7 +54,7 @@ import seaborn as sns #extended functionality / style to matplotlib plots
 
 #Set GPU to use
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 #import the tf stuff
 import tensorflow as tf
@@ -62,6 +62,7 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.models import model_from_json
+# import tensorflowjs as tfjs
 
 #code for GPU mem growth
 #
@@ -448,6 +449,11 @@ if DOTRAIN:
     model_json = model.to_json()
     with open(weights_file.replace('.h5','.json'), "w") as json_file:
         json_file.write(model_json)
+
+# save as TF.js
+# tfjs.converters.save_keras_model(model, './JSmodel')
+
+model.save('Rmodel')
 
 ##==============================================
 # #GRADCAM VIZ
