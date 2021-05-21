@@ -2,14 +2,17 @@
 name: floodcam
 channels:
   - defaults
+  - conda-forge
 dependencies:
  - python
  - numpy
  - scikit-learn
  - scikit-image
- - tensorflow-gpu
+ - pip
  - ipython
  - tqdm
  - pandas
  - seaborn
  - matplotlib
+ - pip:
+    - tensorflow-gpu==2.5

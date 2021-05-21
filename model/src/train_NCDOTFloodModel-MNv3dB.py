@@ -54,7 +54,7 @@ import seaborn as sns #extended functionality / style to matplotlib plots
 
 #Set GPU to use
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 #import the tf stuff
 import tensorflow as tf
@@ -224,8 +224,10 @@ def predict_flood(f,FloodCAMML,height_width=224):
     Orimg = imread(f)
     img_array = np.expand_dims(img,axis=0)
 
-    do_gradcam_viz(img, FloodCAMML, outfile=f.replace('.jpg','_gradcam.png'))
-
+    try:
+        do_gradcam_viz(img, FloodCAMML, outfile=f.replace('.jpg','_gradcam.png'))
+    except:
+        pass
     return FloodCAMML.predict(img_array, batch_size = 1, verbose = False)
 
 ##==============================================
@@ -390,10 +392,11 @@ def do_gradcam_viz(img, model, outfile):
 #download and untar https://figshare.com/articles/dataset/_/13019912
 #use subset of images coded by Katherine Anarde
 #recoded so class in name
+# run download_data.py first
 
 # In[5]:
-train_files = glob('../../../HX_Ted_2020_NCTC/TrainPhotosRecoded/*water*.jpg')[::2]
-test_files = glob('../../../HX_Ted_2020_NCTC/TrainPhotosRecoded/*water*.jpg')[1::2]
+train_files = glob('data/TrainPhotosRecoded/*water*.jpg')[::2]
+test_files = glob('data/TrainPhotosRecoded/*water*.jpg')[1::2]
 
 # CLASSES = ['Buxton', 'Canal', 'Mirlo', 'Ocracoke']
 # class_dict={'Buxton':0,  'Canal':1,  'Mirlo':2, 'Ocracoke':3 }
@@ -411,17 +414,18 @@ BS = 12
 EPOCHS = 50
 PATIENCE = 15
 lr = 1e-4
-notsure_files = glob('../../../HX_Ted_2020_NCTC/TrainPhotosRecoded/*not*.jpg')
+notsure_files = glob('data/TrainPhotosRecoded/*not*.jpg')
 
-sample_files = glob('../../../HX_Ted_2020_NCTC/Buxton/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Canal/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Mirlo/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Ocracoke/*.jpg')
+sample_files = notsure_files
+#sample_files = glob('../../../HX_Ted_2020_NCTC/Buxton/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Canal/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Mirlo/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Ocracoke/*.jpg')
 #2341 files
 
 alpha=0.4
 DROPOUT = 0.4#5
 NUM_NEURONS = 128 #512
 
-# DOTRAIN = False
-DOTRAIN = True
+DOTRAIN = False
+#DOTRAIN = True
 #========================================================
 
 #tl=transferlarning, mv2=MobileNetV2 feature extractor
@@ -450,10 +454,10 @@ if DOTRAIN:
     with open(weights_file.replace('.h5','.json'), "w") as json_file:
         json_file.write(model_json)
 
-# save as TF.js
-# tfjs.converters.save_keras_model(model, './JSmodel')
+    # save as TF.js
+    # tfjs.converters.save_keras_model(model, './JSmodel')
 
-model.save('Rmodel')
+    model.save('Rmodel')
 
 ##==============================================
 # #GRADCAM VIZ
@@ -465,7 +469,10 @@ if DOTRAIN:
     Orimg = imread(f)
     outfile = 'predict'+os.sep+f.split(os.sep)[-1].replace('.jpg','_gradcam.png')
 
-    do_gradcam_viz(img, model, outfile)
+    try:
+        do_gradcam_viz(img, model, outfile)
+    except:
+        pass
 
 ##==============================================
 # #CONFUSION MATRUX
