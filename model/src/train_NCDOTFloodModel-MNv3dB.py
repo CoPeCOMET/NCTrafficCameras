@@ -97,7 +97,7 @@ def build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr,SCRATCH):
                                                  weights = 'imagenet')
 
     if SCRATCH:
-        base_model.trainable = True    
+        base_model.trainable = True
     else:
         base_model.trainable = False
     # base_model.summary()
@@ -398,13 +398,31 @@ def do_gradcam_viz(img, model, outfile):
 #recoded so class in name
 # run download_data.py first
 
+root = '/home/marda/Downloads/FloodCamML/HX_Ted_2020_NCTC/TrainPhotosRecoded/v2/'
+
 # In[5]:
-train_files = glob('data/TrainPhotosRecoded/*water*.jpg')[::2]
-test_files = glob('data/TrainPhotosRecoded/*water*.jpg')[1::2]
+all_files = glob(root+'/Water_X*.jpg')+glob(root+'/No_water_X*.jpg')
+
+train_files = all_files[::2]
+test_files = all_files[1::2]
 
 shuffle(train_files)
 
 shuffle(test_files)
+
+print('%i train files' % (len(train_files)))
+print('%i test files' % (len(test_files)))
+
+
+notsure_files = glob(root+'/Not_sure*.jpg')
+
+sample_files = notsure_files
+
+print('%i not sure files' % (len(notsure_files)))
+
+
+#sample_files = glob('../../../HX_Ted_2020_NCTC/Buxton/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Canal/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Mirlo/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Ocracoke/*.jpg')
+#2341 files
 
 # CLASSES = ['Buxton', 'Canal', 'Mirlo', 'Ocracoke']
 # class_dict={'Buxton':0,  'Canal':1,  'Mirlo':2, 'Ocracoke':3 }
@@ -414,20 +432,14 @@ shuffle(test_files)
 #         if k in t:
 #             site_code_train[counter]=class_dict[k]
 
-CLASSES = ['no water', 'water'] #'not sure',
-class_dict={'no_water':0,  'water':1} #'not_sure':1,
+CLASSES = ['No_water', 'Water'] #'not sure',
+class_dict={'No_water':0,  'Water':1} #'not_sure':1,
 
 
-notsure_files = glob('data/TrainPhotosRecoded/*not*.jpg')
+# DOTRAIN = False
+DOTRAIN = True
 
-sample_files = notsure_files
-#sample_files = glob('../../../HX_Ted_2020_NCTC/Buxton/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Canal/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Mirlo/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Ocracoke/*.jpg')
-#2341 files
-
-DOTRAIN = False
-#DOTRAIN = True
-
-SCRATCH = True
+SCRATCH = True #False
 
 alpha=0.4
 DROPOUT = 0.4#5
@@ -443,11 +455,11 @@ lr = 1e-5 #1e-4
 
 if SCRATCH:
     #tl=transferlarning, mv2=MobileNetV2 feature extractor
-    weights_file = 'scratch_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
+    weights_file = 'scratch_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'_v2.h5'
 
 else:
     #tl=transferlarning, mv2=MobileNetV2 feature extractor
-    weights_file = 'tl_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
+    weights_file = 'tl_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'_v2.h5'
 
 ##==============================================
 # #PREP DATA
@@ -475,7 +487,7 @@ if DOTRAIN:
     # save as TF.js
     # tfjs.converters.save_keras_model(model, './JSmodel')
 
-    model.save('Rmodel')
+    model.save('Rmodel_scratch_dataset2')
 
 ##==============================================
 # #GRADCAM VIZ
@@ -499,11 +511,11 @@ if DOTRAIN:
     y_pred = model.predict(x_test).squeeze()
     y_pred = (y_pred>.5).astype(int)
 
-    cm = confusion_matrix(y_test, y_pred)
-    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    cmat = confusion_matrix(y_test, y_pred)
+    cmat = cmat.astype('float') / cmat.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=(8,8))
-    sns.heatmap(cm,
+    sns.heatmap(cmat,
       annot=True,
       cmap = sns.cubehelix_palette(dark=0, light=1, as_cmap=True))
 

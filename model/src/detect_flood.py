@@ -128,12 +128,18 @@ NorthDock = "https://tims.ncdot.gov/TIMS/Cameras/viewimage.ashx?id=Hatteras_Inle
 SouthDock = "https://tims.ncdot.gov/TIMS/Cameras/viewimage.ashx?id=Hatteras_Inlet_South_Dock.jpg"
 SouthOcracoke = "https://tims.ncdot.gov/tims/cameras/viewimage.ashx?id=Ocracoke_South.jpg"
 
+
+alpha=0.4
+DROPOUT = 0.4#5
+NUM_NEURONS = 128 #512
 height_width = 224
-DROPOUT = 0.4
-NUM_NEURONS = 128
-BS = 12
-lr = 1e-4
-weights_file = 'tl_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
+BS = 16 #12
+EPOCHS = 200
+PATIENCE = 25
+lr = 1e-5 #1e-4
+
+weights_file = 'res/scratch_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'_v2.h5'
+
 
 FloodCAMML = get_model_load_weights(weights_file)
 
@@ -148,7 +154,7 @@ files = [f for f in files if 'dummy' not in f]
 for f in files:
     flood = predict_flood(f,FloodCAMML,height_width)
     if flood>0.5:
-        print("%s: flood" % (f))
+        print("%s: flood (prob: %f)" % (f, flood))
     else:
-        print("%s: no flood" % (f))
+        print("%s: no flood (prob: %f)" % (f, flood))
     print("=================================")
