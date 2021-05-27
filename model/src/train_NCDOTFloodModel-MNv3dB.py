@@ -51,6 +51,7 @@ from skimage.transform import resize
 from skimage.io import imread
 from sklearn.metrics import confusion_matrix
 import seaborn as sns #extended functionality / style to matplotlib plots
+from random import shuffle
 
 #Set GPU to use
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -80,7 +81,7 @@ print('TF version: {}' .format(tf.__version__))
 ##==============================================
 # #TRAINING
 ##==============================================
-def build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr):
+def build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr,SCRATCH):
     '''
     mobilenet feature extraction with distillation head (max pool), and classifying head (dense layer with dropout and kernel regularization),
     '''
@@ -95,7 +96,10 @@ def build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr):
                                                  include_top = False,
                                                  weights = 'imagenet')
 
-    base_model.trainable = False
+    if SCRATCH:
+        base_model.trainable = True    
+    else:
+        base_model.trainable = False
     # base_model.summary()
 
     # add a new classifcation head
@@ -398,6 +402,10 @@ def do_gradcam_viz(img, model, outfile):
 train_files = glob('data/TrainPhotosRecoded/*water*.jpg')[::2]
 test_files = glob('data/TrainPhotosRecoded/*water*.jpg')[1::2]
 
+shuffle(train_files)
+
+shuffle(test_files)
+
 # CLASSES = ['Buxton', 'Canal', 'Mirlo', 'Ocracoke']
 # class_dict={'Buxton':0,  'Canal':1,  'Mirlo':2, 'Ocracoke':3 }
 # site_code_train = np.ones(len(train_files))*99
@@ -409,27 +417,37 @@ test_files = glob('data/TrainPhotosRecoded/*water*.jpg')[1::2]
 CLASSES = ['no water', 'water'] #'not sure',
 class_dict={'no_water':0,  'water':1} #'not_sure':1,
 
-height_width = 224
-BS = 12
-EPOCHS = 50
-PATIENCE = 15
-lr = 1e-4
+
 notsure_files = glob('data/TrainPhotosRecoded/*not*.jpg')
 
 sample_files = notsure_files
 #sample_files = glob('../../../HX_Ted_2020_NCTC/Buxton/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Canal/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Mirlo/*.jpg')+glob('../../../HX_Ted_2020_NCTC/Ocracoke/*.jpg')
 #2341 files
 
+DOTRAIN = False
+#DOTRAIN = True
+
+SCRATCH = True
+
 alpha=0.4
 DROPOUT = 0.4#5
 NUM_NEURONS = 128 #512
+height_width = 224
+BS = 16 #12
+EPOCHS = 200
+PATIENCE = 25
+lr = 1e-5 #1e-4
 
-DOTRAIN = False
-#DOTRAIN = True
+
 #========================================================
 
-#tl=transferlarning, mv2=MobileNetV2 feature extractor
-weights_file = 'tl_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
+if SCRATCH:
+    #tl=transferlarning, mv2=MobileNetV2 feature extractor
+    weights_file = 'scratch_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
+
+else:
+    #tl=transferlarning, mv2=MobileNetV2 feature extractor
+    weights_file = 'tl_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'.h5'
 
 ##==============================================
 # #PREP DATA
@@ -441,7 +459,7 @@ if DOTRAIN:
 # #BUILD MODEL
 ##==============================================
 if DOTRAIN:
-    model = build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr)
+    model = build_tl_mv2_model(height_width,NUM_NEURONS,DROPOUT,lr, SCRATCH)
     model.summary()
 
 ##==============================================
