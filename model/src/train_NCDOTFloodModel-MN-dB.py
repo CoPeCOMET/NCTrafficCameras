@@ -66,6 +66,7 @@ from tensorflow.keras.models import model_from_json
 from datetime import datetime
 
 import keras_tuner as kt
+import tensorflow.keras.backend as K
 
 # import tensorflowjs as tfjs
 
@@ -123,12 +124,12 @@ def model_builder(hp):
     x = layers.GlobalAveragePooling2D()(final_base_output)
     # Add a fully connected layer with 1,024 hidden units and ReLU activation
 
-    hp_units = hp.Int('units', min_value=128, max_value=512, step=32)
+    hp_units = hp.Int('units', min_value=256, max_value=768, step=64)
 
     x = layers.Dense(hp_units, activation='relu')(x) #512
     # Add a dropout rate of 0.5
 
-    dropout_rate = hp.Choice('dropout_rate', values=[.4,.5,.6])
+    dropout_rate = hp.Choice('dropout_rate', values=[.2,.25,.3,.35,.4,.45,.5])
 
     x = layers.Dropout(dropout_rate)(x)
     # Add a final sigmoid layer for classification
@@ -139,7 +140,7 @@ def model_builder(hp):
 
     model = Model(base_model.input, x)
 
-    hp_learning_rate = hp.Choice('learning_rate', values=[1e-4, 1e-5, 1e-6])
+    hp_learning_rate = hp.Choice('learning_rate', values=[.5e-4, 1e-5, .5e-5,1e-6, .5e-6])
 
     if mode is 'binary':
         acc_metric = tf.keras.metrics.BinaryAccuracy(name='accuracy')
@@ -341,6 +342,7 @@ def make_gradcam_heatmap(
 ):
     # First, we create a model that maps the input image to the activations
     # of the last conv layer
+
     last_conv_layer = model.get_layer(last_conv_layer_name)
     last_conv_layer_model = Model(model.inputs, last_conv_layer.output)
 
@@ -398,6 +400,8 @@ def do_gradcam_viz(img, model, outfile):
         "dense_1",
     ]
 
+    alpha=0.3
+
     img_array = np.expand_dims(img,axis=0)
 
     #from https://keras.io/examples/vision/grad_cam/
@@ -449,7 +453,9 @@ def do_gradcam_viz(img, model, outfile):
 ##==============================================
 # #INPUTS
 ##=============================================
-root = '/home/marda/Downloads/HX_Ted_2020_NCTC/All_Photos/Recoded'
+# root = '/home/marda/Downloads/HX_Ted_2020_NCTC/All_Photos/Recoded'
+# root = '/home/marda/Downloads/FloodCamML/Data/v1_20210709'
+root = '/home/marda/Downloads/FloodCamML/Data/v2_20210712'
 
 mode='categorical'
 # mode = 'binary'
@@ -462,22 +468,18 @@ if mode == 'binary':
     total_files = len(all_files)
 else:
     #put names in alphabetical order
-    CLASSES = ['Not_usable','No_water','Not_sure','Water']
-    class_dict={'Not_usable':0, 'No_water':1, 'Not_sure':2,  'Water':3}
-    all_files = glob(root+'/Water/*.jpg')+glob(root+'/No_water/*.jpg')+glob(root+'/Not_sure/*.jpg')+glob(root+'/Not_usable/*.jpg')
+    # CLASSES = ['Not_usable','No_water','Not_sure','Water']
+    # class_dict={'Not_usable':0, 'No_water':1, 'Not_sure':2,  'Water':3}
+    # all_files = glob(root+'/Water/*.jpg')+glob(root+'/No_water/*.jpg')+glob(root+'/Not_sure/*.jpg')+glob(root+'/Not_usable/*.jpg')
+
+    CLASSES = ['Not_usable','No_water','Water']
+    class_dict={'Not_usable':0, 'No_water':1, 'Water':2}
+    all_files = glob(root+'/Water/*.jpg')+glob(root+'/No_water/*.jpg')+glob(root+'/Not_usable/*.jpg')
+
     total_files = len(all_files)
 
 NCLASSES = len(CLASSES)
 
-train_files = all_files[::2]
-test_files = all_files[1::2]
-
-shuffle(train_files)
-
-shuffle(test_files)
-
-print('%i train files' % (len(train_files)))
-print('%i test files' % (len(test_files)))
 
 
 # DOTRAIN = False
@@ -485,10 +487,24 @@ DOTRAIN = True
 SCRATCH = True # False
 # alpha=0.4
 height_width = 224
-BS = 16 #12
+BS = 12# 20 #16 #12
 EPOCHS = 200
 PATIENCE = 25
-VAL_SPLIT = 0.5
+VAL_SPLIT = 0.7 #5
+
+
+shuffle(all_files)
+nn = int(VAL_SPLIT*total_files)
+
+test_files = all_files[:nn] #test first
+
+# train is whatever is left
+train_files = all_files[nn:]
+
+
+print('%i train files' % (len(train_files)))
+print('%i test files' % (len(test_files)))
+
 
 # DROPOUT = 0.4#5
 # NUM_NEURONS = 128 #512
@@ -505,13 +521,17 @@ VAL_SPLIT = 0.5
 # if DOTRAIN:
 x_train, y_train, x_test, y_test = get_data(train_files,test_files,height_width)
 
-x = x_train[:BS]
-y = y_train[:BS]
+# x = x_train[:BS]
+# y = y_train[:BS]
 
 plt.figure(figsize=(15, 15))
 counter = 1
-for im, l in zip(x,y):
-    ax = plt.subplot(4, 4,counter)
+for im, l in zip(x_train[:BS], y_train[:BS]):
+    if BS==16:
+        ax = plt.subplot(4, 4,counter)
+    else:
+        ax = plt.subplot(4, 5,counter)
+
     plt.imshow(im)
 
     # if mode=='binary':
@@ -526,7 +546,7 @@ for im, l in zip(x,y):
 # plt.show()
 plt.savefig('NCDot_example_train_batch_'+mode+'_'+str(NCLASSES)+'.png',dpi=300,bbox_inches='tight')
 plt.close()
-del x, y
+# del x, y
 
 #hp=kt.HyperParameters()
 # Variation of HyperBand algorithm.
@@ -539,11 +559,13 @@ del x, y
 #         http://jmlr.org/papers/v18/16-558.html).
 
 tuner = kt.Hyperband(model_builder,
-                     objective='val_accuracy',
-                     max_epochs=10,
+                     objective='val_loss', #'val_accuracy',
+                     max_epochs=int(EPOCHS/2),
                      factor=3,
+                     hyperband_iterations=3,
+                     seed=2021,
                      directory='tuner',
-                     project_name='CamML4class')
+                     project_name='CamML4class_'+datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
 earlystop = EarlyStopping(monitor="val_loss",
                               mode="min", patience=PATIENCE)
@@ -554,6 +576,7 @@ tuner.search(x_train, tf.one_hot(y_train,NCLASSES), epochs=EPOCHS, validation_da
 
 tuner.results_summary()
 
+K.clear_session()
 
 # Get the optimal hyperparameters
 best_hps=tuner.get_best_hyperparameters(num_trials=1)[0]
@@ -576,6 +599,11 @@ DROPOUT = best_hps.get('dropout_rate')
 NUM_NEURONS = best_hps.get('units')
 lr = best_hps.get('learning_rate')
 
+try:
+    os.mkdir('results')
+except:
+    pass
+
 if SCRATCH:
     #tl=transferlarning, mv2=MobileNetV2 feature extractor
     weights_file = 'results/scratch_mv2_bs'+str(BS)+'_drop'+str(DROPOUT)+'_nn'+str(NUM_NEURONS)+'_sz'+str(height_width)+'_lr'+str(lr)+'_val'+str(VAL_SPLIT)+'.h5'
@@ -593,6 +621,8 @@ print(weights_file)
 #     model = train_model(model,PATIENCE,weights_file,BS,EPOCHS,img_generator,val_generator,mode)
 model = model_trainer(model)
 
+plt.close('all')
+
 model_json = model.to_json()
 with open(weights_file.replace('.h5','.json'), "w") as json_file:
     json_file.write(model_json)
@@ -600,16 +630,23 @@ with open(weights_file.replace('.h5','.json'), "w") as json_file:
 # save as TF.js
 # tfjs.converters.save_keras_model(model, './JSmodel')
 
-model.save('Rmodel_'+weights_file.replace('.h5','')+datetime.now().strftime("%d-%m-%Y-%H-%M-%S"))
+model.save('Rmodel_'+weights_file.replace('.h5','')+datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+
+K.clear_session()
 
 ##==============================================
 # #GRADCAM VIZ
 ##==============================================
-notsure_files = glob(root+'/Not_sure/*.jpg')
+notsure_files = all_files[:BS]
 # if DOTRAIN:
 
+try:
+    os.mkdir('predict')
+except:
+    pass
+
 for k in np.arange(BS):
-    use = np.random.randint(100)### 42
+    use = np.random.randint(len(notsure_files))### 42
     f = notsure_files[use]
     img = resize(imread(f), (height_width,height_width))
     Orimg = imread(f)
@@ -619,6 +656,7 @@ for k in np.arange(BS):
         do_gradcam_viz(img, model, outfile)
     except:
         pass
+plt.close('all')
 
 ##==============================================
 # #CONFUSION MATRUX
@@ -663,7 +701,7 @@ for k in x_test[:16]:
 plt.savefig(weights_file.replace('.h5','_sampletest.png'), dpi=200, bbox_inches='tight')
 plt.close()
 
-
+plt.close('all')
 
 #
 #
